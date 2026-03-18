@@ -109,6 +109,47 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
+		<script src="coi-serviceworker.js"></script>
+		<script>
+            // Chunked Loader for GitHub Pages
+            (function() {
+                const originalFetch = window.fetch;
+                const CHUNK_CONFIG = {
+                    "index.pck": 59,
+                    "index.wasm": 2
+                };
+
+                window.fetch = function(url, options) {
+                    const filename = typeof url === 'string' ? url.split('/').pop() : "";
+                    if (CHUNK_CONFIG[filename]) {
+                        console.log("Intercepting request for " + filename + " (loading " + CHUNK_CONFIG[filename] + " chunks)");
+                        const count = CHUNK_CONFIG[filename];
+                        
+                        const stream = new ReadableStream({
+                            async start(controller) {
+                                for (let i = 1; i <= count; i++) {
+                                    const chunkName = filename + "." + i.toString().padStart(3, '0');
+                                    const response = await originalFetch(chunkName, options);
+                                    const reader = response.body.getReader();
+                                    
+                                    while (true) {
+                                        const { done, value } = await reader.read();
+                                        if (done) break;
+                                        controller.enqueue(value);
+                                    }
+                                }
+                                controller.close();
+                            }
+                        });
+
+                        return Promise.resolve(new Response(stream, {
+                            headers: { 'Content-Type': filename.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream' }
+                        }));
+                    }
+                    return originalFetch(url, options);
+                };
+            })();
+		</script>
 		<script src="index.js"></script>
 		<script>
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":1463775688,"index.wasm":35739700},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
