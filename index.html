@@ -119,8 +119,18 @@ body {
                     "index.wasm": 2
                 };
 
+                function getFilename(url) {
+                    try {
+                        const urlObj = new URL(url, window.location.href);
+                        return urlObj.pathname.split('/').pop();
+                    } catch (e) {
+                        if (typeof url !== 'string') return "";
+                        return url.split('?')[0].split('/').pop();
+                    }
+                }
+
                 window.fetch = function(url, options) {
-                    const filename = typeof url === 'string' ? url.split('/').pop() : "";
+                    const filename = getFilename(url);
                     if (CHUNK_CONFIG[filename]) {
                         console.log("Intercepting request for " + filename + " (loading " + CHUNK_CONFIG[filename] + " chunks)");
                         const count = CHUNK_CONFIG[filename];
@@ -130,6 +140,9 @@ body {
                                 for (let i = 1; i <= count; i++) {
                                     const chunkName = filename + "." + i.toString().padStart(3, '0');
                                     const response = await originalFetch(chunkName, options);
+                                    if (!response.ok) {
+                                        throw new Error("Failed to load chunk: " + chunkName);
+                                    }
                                     const reader = response.body.getReader();
                                     
                                     while (true) {
